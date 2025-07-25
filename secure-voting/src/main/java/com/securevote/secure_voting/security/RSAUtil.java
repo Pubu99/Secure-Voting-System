@@ -1,58 +1,42 @@
 package com.securevote.secure_voting.security;
 
-import lombok.extern.slf4j.Slf4j;
-
 import javax.crypto.Cipher;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
-import java.security.spec.*;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-@Slf4j
 public class RSAUtil {
 
-    private static final String PUBLIC_KEY_FILE = "public.key";
-    private static final String PRIVATE_KEY_FILE = "private.key";
+    public static final String PUBLIC_KEY_FILE = "public.key";
+    public static final String PRIVATE_KEY_FILE = "private.key";
 
-    public static void generateKeyPair() {
-        try {
-            log.info("Generating RSA key pair...");
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(2048);
-            KeyPair pair = generator.generateKeyPair();
+    public static void generateKeyPair() throws Exception {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        KeyPair pair = keyGen.generateKeyPair();
 
-            // Save keys to file
-            saveKey(PUBLIC_KEY_FILE, pair.getPublic().getEncoded());
-            saveKey(PRIVATE_KEY_FILE, pair.getPrivate().getEncoded());
+        // Save public key
+        Files.write(Paths.get(PUBLIC_KEY_FILE), pair.getPublic().getEncoded());
 
-            log.info("RSA key pair generated and saved.");
-        } catch (Exception e) {
-            log.error("Error generating RSA key pair", e);
-        }
-    }
-
-    private static void saveKey(String filename, byte[] keyBytes) throws Exception {
-        try (FileOutputStream fos = new FileOutputStream(filename)) {
-            fos.write(keyBytes);
-        }
+        // Save private key
+        Files.write(Paths.get(PRIVATE_KEY_FILE), pair.getPrivate().getEncoded());
     }
 
     public static PublicKey getPublicKey() throws Exception {
-        byte[] bytes = Files.readAllBytes(new File(PUBLIC_KEY_FILE).toPath());
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(bytes);
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        log.info("Public key loaded from file");
-        return factory.generatePublic(spec);
+        byte[] keyBytes = Files.readAllBytes(Paths.get(PUBLIC_KEY_FILE));
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePublic(spec);
     }
 
     public static PrivateKey getPrivateKey() throws Exception {
-        byte[] bytes = Files.readAllBytes(new File(PRIVATE_KEY_FILE).toPath());
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(bytes);
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        log.info("Private key loaded from file");
-        return factory.generatePrivate(spec);
+        byte[] keyBytes = Files.readAllBytes(Paths.get(PRIVATE_KEY_FILE));
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePrivate(spec);
     }
 
     public static String decrypt(String encryptedText, PrivateKey privateKey) throws Exception {
@@ -61,5 +45,4 @@ public class RSAUtil {
         byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedText));
         return new String(decryptedBytes);
     }
-
 }

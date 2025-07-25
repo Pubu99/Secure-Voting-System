@@ -1,8 +1,10 @@
 package com.securevote.secure_voting.controller;
 
 import com.securevote.secure_voting.dto.VoteRequest;
+import com.securevote.secure_voting.model.Candidate;
 import com.securevote.secure_voting.model.User;
 import com.securevote.secure_voting.model.Vote;
+import com.securevote.secure_voting.repository.CandidateRepository;
 import com.securevote.secure_voting.repository.UserRepository;
 import com.securevote.secure_voting.repository.VoteRepository;
 import com.securevote.secure_voting.security.JwtUtil;
@@ -29,6 +31,9 @@ public class VoteController {
 
     @Autowired
     private VoteRepository voteRepository;
+
+    @Autowired
+    private CandidateRepository candidateRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -96,6 +101,35 @@ public class VoteController {
         return voteRepository.existsByHash(hash);
     }
 
+    @GetMapping("/status")
+    public Map<String, Boolean> getVotingStatus(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                throw new IllegalArgumentException("Missing or invalid Authorization header");
+            }
+
+            String token = authHeader.replace("Bearer ", "").trim();
+            String username = jwtUtil.extractUsername(token);
+
+            if (username == null) {
+                throw new IllegalArgumentException("Invalid or expired token");
+            }
+
+            Optional<User> userOptional = userRepository.findByUsername(username);
+            if (userOptional.isEmpty()) {
+                throw new IllegalArgumentException("User not found");
+            }
+
+            User user = userOptional.get();
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("hasVoted", user.isHasVoted());
+            return response;
+        } catch (Exception e) {
+            log.error("Failed to retrieve voting status", e);
+            throw new RuntimeException("Error retrieving voting status");
+        }
+    }
+
     @GetMapping("/results")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Integer> tallyVotes() {
@@ -104,10 +138,19 @@ public class VoteController {
         try {
             PrivateKey privateKey = RSAUtil.getPrivateKey();
             List<Vote> votes = voteRepository.findAll();
+            List<Candidate> validCandidates = candidateRepository.findAll();
+            Set<String> validCandidateNames = new HashSet<>();
+            for (Candidate candidate : validCandidates) {
+                validCandidateNames.add(candidate.getName());
+            }
 
             for (Vote vote : votes) {
                 String decrypted = RSAUtil.decrypt(vote.getEncryptedVote(), privateKey);
-                result.put(decrypted, result.getOrDefault(decrypted, 0) + 1);
+                if (validCandidateNames.contains(decrypted)) {
+                    result.put(decrypted, result.getOrDefault(decrypted, 0) + 1);
+                } else {
+                    log.warn("Invalid vote detected for candidate: {}", decrypted);
+                }
             }
 
             return result;
