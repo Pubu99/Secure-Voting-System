@@ -2,11 +2,13 @@ package com.securevote.secure_voting.security;
 
 import lombok.extern.slf4j.Slf4j;
 
+import javax.crypto.Cipher;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.security.*;
 import java.security.spec.*;
+import java.util.Base64;
 
 @Slf4j
 public class RSAUtil {
@@ -52,4 +54,12 @@ public class RSAUtil {
         log.info("Private key loaded from file");
         return factory.generatePrivate(spec);
     }
+
+    public static String decrypt(String encryptedText, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedText));
+        return new String(decryptedBytes);
+    }
+
 }

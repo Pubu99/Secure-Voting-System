@@ -1,17 +1,19 @@
 package com.securevote.secure_voting.security;
 
+import jakarta.servlet.Filter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 public class WebSecurityConfig {
 
     private final UserDetailsService userDetailsService;
+    private final JwtAuthFilter jwtAuthFilter; // ✅ Injected JWT filter
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -50,9 +53,11 @@ public class WebSecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/candidates").authenticated()
                         .requestMatchers("/api/votes/results").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // ✅ Register JWT filter
                 .httpBasic(Customizer.withDefaults())
                 .build();
     }
@@ -61,7 +66,7 @@ public class WebSecurityConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // adjust for frontend URL
+        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
         config.setAllowedHeaders(Arrays.asList("*"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
