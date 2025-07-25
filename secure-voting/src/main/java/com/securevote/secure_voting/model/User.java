@@ -5,17 +5,20 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "users")
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String username;
 
-    private String password;
+    @Column(nullable = false)
+    private String passwordHash;
 
-    private boolean hasVoted = false;
+    private String role;
+
+    @Column(name = "has_voted", nullable = false)
+    private boolean hasVoted;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -26,11 +29,15 @@ public class User {
 
     public void setUsername(String username) { this.username = username; }
 
-    public String getPassword() { return password; }
+    public String getPasswordHash() { return passwordHash; }
 
-    public void setPassword(String password) { this.password = password; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
     public boolean isHasVoted() { return hasVoted; }
 
     public void setHasVoted(boolean hasVoted) { this.hasVoted = hasVoted; }
+
+    public String getRole() { return role; }
+
+    public void setRole(String role) { this.role = role; }
 }
